@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>字体大小调试工具</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .slider {
+      width: 100%;
+      height: 25px;
+    }
+    .font-size-preview {
+      font-family: system-ui, -apple-system, sans-serif;
+      transition: font-size 0.2s ease;
+    }
+    .debug-badge {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background-color: rgba(255, 0, 0, 0.7);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 9999;
+    }
+    .component-row:not(:last-child) {
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 4px;
+      z-index: 9999;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: opacity 0.3s, transform 0.3s;
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    .notification.success {
+      background-color: #10B981;
+      color: white;
+    }
+    .notification.error {
+      background-color: #EF4444;
+      color: white;
+    }
+    .notification.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="debug-badge">字体调试工具</div>
+  
+  <!-- 通知区域 -->
+  <div id="notification" class="notification">
+    <span id="notificationMessage"></span>
+  </div>
+  
+  <div class="container mx-auto p-4 max-w-4xl">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">字体大小调试工具</h1>
+      <div class="flex space-x-2">
+        <button id="togglePreview" class="bg-gray-200 px-3 py-1 rounded-md text-sm">
+          隐藏预览
+        </button>
+        <button id="resetBtn" class="bg-red-100 px-3 py-1 rounded-md text-sm text-red-700">
+          重置
+        </button>
+        <button id="exportBtn" class="bg-blue-600 px-3 py-1 rounded-md text-sm text-white">
+          导出配置
+        </button>
+      </div>
+    </div>
+    
+    <!-- 项目目录选择 -->
+    <div class="bg-white shadow-md rounded-lg p-4 mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-medium">项目设置</h2>
+        <button id="selectDirBtn" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm">
+          选择项目目录
+        </button>
+      </div>
+      <div id="projectDirDisplay" class="text-gray-600 mb-2">
+        未选择项目目录
+      </div>
+      <div class="flex space-x-2 mb-2">
+        <button id="scanCommentsBtn" class="flex-1 bg-blue-600 text-white py-2 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          扫描@font-tool注释
+        </button>
+        <button id="applyToCodeBtn" class="flex-1 bg-green-600 text-white py-2 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          应用配置到代码
+        </button>
+      </div>
+      <div id="scanStatus" class="text-gray-600 text-sm mt-2 hidden">
+        <div class="flex items-center">
+          <svg class="animate-spin h-4 w-4 mr-2 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          正在扫描项目中的@font-tool注释...
+        </div>
+      </div>
+      
+      <!-- 热更新状态和控制 -->
+      <div class="mt-4 pt-4 border-t border-gray-200">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-md font-medium">热更新</h3>
+          <span id="hotReloadStatus" class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">正在检查...</span>
+        </div>
+        <div class="text-sm text-gray-600 mb-3">
+          热更新功能可以让字体调整即时反映在运行中的应用上
+        </div>
+        <div class="flex space-x-2">
+          <button id="copyClientCodeBtn" class="flex-1 bg-indigo-600 text-white py-2 rounded-md font-medium text-sm">
+            复制客户端代码
+          </button>
+          <button id="showClientCodeBtn" class="px-3 py-1 bg-gray-200 rounded-md text-sm">
+            查看代码
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white shadow-md rounded-lg p-4 mb-6">
+      <div class="mb-4">
+        <label for="baseFontSize" class="block text-sm font-medium text-gray-700 mb-1">全局基础字体大小 (fontSize)</label>
+        <div class="flex items-center">
+          <input 
+            type="range" 
+            id="baseFontSize" 
+            min="0" 
+            max="15" 
+            value="3" 
+            class="slider mr-3" 
+          >
+          <span id="baseFontSizeDisplay" class="text-sm font-medium">13px</span>
+        </div>
+      </div>
+      
+      <p class="text-gray-600 text-sm">
+        在调整相对大小时，请记住：
+        <br>- 负数值会使字体变小（如fontSize-2表示比基础字体小2级）
+        <br>- 正数值会使字体变大（如fontSize+1表示比基础字体大1级）
+        <br>- 最小值应该是-2（即8px），最大值是15（即25px）
+      </p>
+    </div>
+    
+    <div id="componentList"></div>
+  </div>
+  
+  <script>
+    // 字体大小计算函数 - 基于传入的级别返回像素值
+    function mapLevelToPx(level) {
+      const clampedLevel = Math.max(-2, Math.min(15, level)); // 允许级别在-2到15之间
+      return 10 + clampedLevel; // 基础公式: 10px + level
+    }
+    
+    // 初始配置数据
+    const initialConfig = [
+      {
+        componentName: 'HexagramCard',
+        description: '卦象卡片组件',
+        elements: [
+          { id: 'hc-1', name: '卦象名称', relativeSizeValue: 1, path: 'HexagramCard.tsx:55' },
+          { id: 'hc-2', name: '五行符号', relativeSizeValue: -3, path: 'HexagramCard.tsx:61' },
+          { id: 'hc-3', name: '标签文字', relativeSizeValue: -4, path: 'HexagramCard.tsx:70,75,79,83' },
+          { id: 'hc-4', name: '属性内容', relativeSizeValue: -2, path: 'HexagramCard.tsx:71,76,80,84' },
+          { id: 'hc-5', name: '卦象描述', relativeSizeValue: -1, path: 'HexagramCard.tsx:88' },
+          { id: 'hc-6', name: '详情按钮', relativeSizeValue: -1, path: 'HexagramCard.tsx:98' },
+        ]
+      },
+      {
+        componentName: 'HexagramInput',
+        description: '卦象输入组件',
+        elements: [
+          { id: 'hi-1', name: '立即起卦按钮', relativeSizeValue: 0, path: 'HexagramInput.tsx:42' },
+          { id: 'hi-2', name: '使用当前时间提示', relativeSizeValue: -2, path: 'HexagramInput.tsx:66' },
+          { id: 'hi-3', name: '占问说明标题', relativeSizeValue: 0, path: 'HexagramInput.tsx:76' },
+          { id: 'hi-4', name: '占问说明内容', relativeSizeValue: -1, path: 'HexagramInput.tsx:80' },
+          { id: 'hi-5', name: '标签分类（正时卦等）', relativeSizeValue: 0, path: 'HexagramInput.tsx:86,93' },
+          { id: 'hi-6', name: '分类内容', relativeSizeValue: -1, path: 'HexagramInput.tsx:87,94' },
+          { id: 'hi-7', name: '特别提示标题', relativeSizeValue: 0, path: 'HexagramInput.tsx:101' },
+          { id: 'hi-8', name: '特别提示内容', relativeSizeValue: -1, path: 'HexagramInput.tsx:107' },
+          { id: 'hi-9', name: '天地人数标签', relativeSizeValue: -1, path: 'HexagramInput.tsx:316,325,342' },
+          { id: 'hi-10', name: '输入框文字', relativeSizeValue: -1, path: 'HexagramInput.tsx:317,332,349' },
+          { id: 'hi-11', name: '随机生成按钮', relativeSizeValue: 0, path: 'HexagramInput.tsx:361' },
+          { id: 'hi-12', name: '数字说明文字', relativeSizeValue: -2, path: 'HexagramInput.tsx:378,381,384' },
+          { id: 'hi-13', name: '生成卦象按钮', relativeSizeValue: 0, path: 'HexagramInput.tsx:392' },
+          { id: 'hi-14', name: '或按选择时间起卦', relativeSizeValue: -2, path: 'HexagramInput.tsx:411' },
+        ]
+      },
+      {
+        componentName: 'HexagramInput (续)',
+        description: '卦象输入组件 - 下半部分',
+        elements: [
+          { id: 'hi-15', name: '农历年月日时标签', relativeSizeValue: -1, path: 'HexagramInput.tsx:419,476,535,559' },
+          { id: 'hi-16', name: '下拉选择器文字', relativeSizeValue: -1, path: 'HexagramInput.tsx:423,480' },
+          { id: 'hi-17', name: '下拉选项文字', relativeSizeValue: -2, path: 'HexagramInput.tsx:450,507' },
+          { id: 'hi-18', name: '日期选择按钮', relativeSizeValue: -1, path: 'HexagramInput.tsx:542' },
+          { id: 'hi-19', name: '时辰选择按钮', relativeSizeValue: -2, path: 'HexagramInput.tsx:566' },
+          { id: 'hi-20', name: '按选择时间起卦按钮', relativeSizeValue: 0, path: 'HexagramInput.tsx:584' },
+          { id: 'hi-21', name: '占问输入框', relativeSizeValue: -1, path: 'HexagramInput.tsx:634' },
+          { id: 'hi-22', name: '占问提示文字', relativeSizeValue: -3, path: 'HexagramInput.tsx:641' },
+          { id: 'hi-23', name: '正时卦/活时卦按钮', relativeSizeValue: 0, path: 'HexagramInput.tsx:665,677' },
+        ]
+      },
+      {
+        componentName: 'HexagramResult',
+        description: '卦象结果显示组件',
+        elements: [
+          { id: 'hr-1', name: '结果标题', relativeSizeValue: 1, path: 'HexagramResult.tsx:42' },
+          { id: 'hr-2', name: '查询问题', relativeSizeValue: -1, path: 'HexagramResult.tsx:50' },
+          { id: 'hr-3', name: '占卜时间', relativeSizeValue: -2, path: 'HexagramResult.tsx:58' },
+          { id: 'hr-4', name: '卦象名称', relativeSizeValue: 0, path: 'HexagramResult.tsx:72' },
+          { id: 'hr-5', name: '卦象解析文本', relativeSizeValue: -1, path: 'HexagramResult.tsx:90' },
+          { id: 'hr-6', name: '按钮文字', relativeSizeValue: -1, path: 'HexagramResult.tsx:110' },
+        ]
+      },
+      {
+        componentName: 'HexagramDetailPage',
+        description: '卦象详情页组件',
+        elements: [
+          { id: 'hd-1', name: '卦象标题', relativeSizeValue: 2, path: 'HexagramDetailPage.tsx:35' },
+          { id: 'hd-2', name: '卦辞标签', relativeSizeValue: 0, path: 'HexagramDetailPage.tsx:45' },
+          { id: 'hd-3', name: '卦辞内容', relativeSizeValue: -1, path: 'HexagramDetailPage.tsx:46' },
+          { id: 'hd-4', name: '爻辞标签', relativeSizeValue: 0, path: 'HexagramDetailPage.tsx:60' },
+          { id: 'hd-5', name: '爻辞内容', relativeSizeValue: -1, path: 'HexagramDetailPage.tsx:65' },
+          { id: 'hd-6', name: '详解标题', relativeSizeValue: 1, path: 'HexagramDetailPage.tsx:80' },
+          { id: 'hd-7', name: '详解内容', relativeSizeValue: -1, path: 'HexagramDetailPage.tsx:81' },
+        ]
+      }
+    ];
+    
+    // 应用状态
+    let state = {
+      baseFontSize: 3, // 默认值
+      configs: JSON.parse(localStorage.getItem('fontSizeDebugConfig')) || initialConfig,
+      showPreview: true,
+      projectDirectory: localStorage.getItem('projectDirectory') || null,
+      isScanning: false,
+      hotReload: {
+        running: false,
+        port: 0,
+        clientCount: 0
+      }
+    };
+    
+    // DOM 元素
+    const baseFontSizeSlider = document.getElementById('baseFontSize');
+    const baseFontSizeDisplay = document.getElementById('baseFontSizeDisplay');
+    const togglePreviewBtn = document.getElementById('togglePreview');
+    const resetBtn = document.getElementById('resetBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const componentList = document.getElementById('componentList');
+    const selectDirBtn = document.getElementById('selectDirBtn');
+    const projectDirDisplay = document.getElementById('projectDirDisplay');
+    const applyToCodeBtn = document.getElementById('applyToCodeBtn');
+    const notification = document.getElementById('notification');
+    const notificationMessage = document.getElementById('notificationMessage');
+    const scanCommentsBtn = document.getElementById('scanCommentsBtn');
+    const scanStatus = document.getElementById('scanStatus');
+    const hotReloadStatus = document.getElementById('hotReloadStatus');
+    const copyClientCodeBtn = document.getElementById('copyClientCodeBtn');
+    const showClientCodeBtn = document.getElementById('showClientCodeBtn');
+    
+    // 更新基础字体大小显示
+    function updateBaseFontSizeDisplay() {
+      const px = mapLevelToPx(state.baseFontSize);
+      baseFontSizeDisplay.textContent = `${px}px (fontSize = ${state.baseFontSize})`;
+    }
+    
+    // 更新所有预览文本的字体大小
+    function updateAllPreviews() {
+      state.configs.forEach(config => {
+        config.elements.forEach(element => {
+          const previewEl = document.getElementById(`preview-${element.id}`);
+          if (previewEl) {
+            const fontSize = mapLevelToPx(state.baseFontSize + element.relativeSizeValue);
+            previewEl.style.fontSize = `${fontSize}px`;
+          }
+          
+          const sizeDisplay = document.getElementById(`size-${element.id}`);
+          if (sizeDisplay) {
+            sizeDisplay.textContent = `${mapLevelToPx(state.baseFontSize + element.relativeSizeValue)}px`;
+          }
+        });
+      });
+    }
+    
+    // 更新热更新状态
+    async function updateHotReloadStatus() {
+      try {
+        const status = await window.electronAPI.getWebSocketStatus();
+        state.hotReload = status;
+        
+        if (status.running) {
+          const statusText = `已连接 (端口: ${status.port}${status.clientCount > 0 ? ', ' + status.clientCount + '个客户端' : ''})`;
+          hotReloadStatus.textContent = statusText;
+          hotReloadStatus.classList.remove('bg-gray-100', 'text-gray-600', 'bg-red-100', 'text-red-600');
+          hotReloadStatus.classList.add('bg-green-100', 'text-green-600');
+        } else {
+          hotReloadStatus.textContent = '未连接';
+          hotReloadStatus.classList.remove('bg-gray-100', 'text-gray-600', 'bg-green-100', 'text-green-600');
+          hotReloadStatus.classList.add('bg-red-100', 'text-red-600');
+        }
+      } catch (error) {
+        console.error('获取热更新状态失败:', error);
+        hotReloadStatus.textContent = '状态未知';
+        hotReloadStatus.classList.remove('bg-green-100', 'text-green-600', 'bg-red-100', 'text-red-600');
+        hotReloadStatus.classList.add('bg-gray-100', 'text-gray-600');
+      }
+    }
+    
+    // 复制客户端代码到剪贴板
+    async function copyClientCode() {
+      try {
+        const code = await window.electronAPI.generateHotReloadClient();
+        navigator.clipboard.writeText(code).then(() => {
+          showNotification('已复制客户端代码到剪贴板');
+        }).catch(err => {
+          console.error('复制失败:', err);
+          showNotification('复制失败: ' + err.message, 'error');
+        });
+      } catch (error) {
+        console.error('生成客户端代码失败:', error);
+        showNotification('生成客户端代码失败', 'error');
+      }
+    }
+    
+    // 显示客户端代码对话框
+    async function showClientCode() {
+      try {
+        const code = await window.electronAPI.generateHotReloadClient();
+        
+        // 创建模态对话框
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex';
+        modal.innerHTML = `
+          <div class="relative p-5 bg-white w-3/4 max-w-4xl m-auto rounded-lg">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium">热更新客户端代码</h3>
+              <button class="close-modal p-2 -mr-2">
+                <svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="text-sm mb-4">
+              <p>将以下代码复制到你的React应用中，以启用实时字体大小更新。</p>
+              <p>推荐添加在应用的入口文件（如index.js或App.js）中。</p>
+            </div>
+            <div class="overflow-auto bg-gray-100 p-4 rounded-md" style="max-height: 60vh">
+              <pre class="text-sm" style="white-space: pre-wrap;">${code}</pre>
+            </div>
+            <div class="mt-4 flex justify-end">
+              <button class="copy-code-btn bg-blue-600 text-white px-4 py-2 rounded-md text-sm mr-2">复制代码</button>
+              <button class="close-modal bg-gray-200 px-4 py-2 rounded-md text-sm">关闭</button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 关闭按钮事件
+        modal.querySelectorAll('.close-modal').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+          });
+        });
+        
+        // 复制代码按钮事件
+        modal.querySelector('.copy-code-btn').addEventListener('click', () => {
+          navigator.clipboard.writeText(code).then(() => {
+            showNotification('已复制客户端代码到剪贴板');
+          }).catch(err => {
+            console.error('复制失败:', err);
+            showNotification('复制失败: ' + err.message, 'error');
+          });
+        });
+        
+        // 点击背景关闭
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            document.body.removeChild(modal);
+          }
+        });
+      } catch (error) {
+        console.error('生成客户端代码失败:', error);
+        showNotification('生成客户端代码失败', 'error');
+      }
+    }
+    
+    // 添加扫描状态显示函数
+    function updateScanStatus(isScanning) {
+      state.isScanning = isScanning;
+      if (isScanning) {
+        scanStatus.classList.remove('hidden');
+      } else {
+        scanStatus.classList.add('hidden');
+      }
+    }
+    
+    // 更新项目目录显示
+    function updateProjectDirDisplay() {
+      if (state.projectDirectory) {
+        projectDirDisplay.textContent = `项目目录: ${state.projectDirectory}`;
+        applyToCodeBtn.disabled = false;
+        scanCommentsBtn.disabled = false;
+      } else {
+        projectDirDisplay.textContent = '未选择项目目录';
+        applyToCodeBtn.disabled = true;
+        scanCommentsBtn.disabled = true;
+      }
+    }
+    
+    // 显示通知
+    function showNotification(message, type = 'success') {
+      notification.className = `notification ${type}`;
+      notificationMessage.textContent = message;
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 5000);
+    }
+    
+    // 渲染组件列表
+    function renderComponentList() {
+      componentList.innerHTML = '';
+      
+      state.configs.forEach((config, configIndex) => {
+        const componentCard = document.createElement('div');
+        componentCard.className = 'bg-white shadow-md rounded-lg p-4 mb-6';
+        
+        componentCard.innerHTML = `
+          <h2 class="text-lg font-bold mb-2">${config.componentName}</h2>
+          <p class="text-gray-600 mb-4">${config.description}</p>
+          <div class="space-y-4 component-elements"></div>
+        `;
+        
+        const elementsContainer = componentCard.querySelector('.component-elements');
+        
+        config.elements.forEach((element, elementIndex) => {
+          const elementRow = document.createElement('div');
+          elementRow.className = 'component-row';
+          elementRow.innerHTML = `
+            <div class="flex justify-between items-center mb-2">
+              <div>
+                <p class="font-medium">${element.name}</p>
+                <p class="text-gray-500 text-xs">${element.path}</p>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button 
+                  class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs view-code-btn"
+                  data-config-index="${configIndex}"
+                  data-element-index="${elementIndex}"
+                >
+                  查看代码
+                </button>
+                <span class="px-2 py-1 rounded ${element.relativeSizeValue > 0 ? 'bg-green-100 text-green-800' : element.relativeSizeValue < 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}">
+                  fontSize${element.relativeSizeValue >= 0 ? '+' : ''}${element.relativeSizeValue}
+                </span>
+                <span id="size-${element.id}" class="text-gray-500 text-sm">
+                  ${mapLevelToPx(state.baseFontSize + element.relativeSizeValue)}px
+                </span>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <button 
+                class="px-2 bg-gray-200 rounded decrease-btn"
+                data-config-index="${configIndex}"
+                data-element-index="${elementIndex}"
+                ${element.relativeSizeValue <= -2 ? 'disabled style="opacity: 0.5"' : ''}
+              >
+                -
+              </button>
+              
+              <input 
+                type="range"
+                min="-2"
+                max="5"
+                value="${element.relativeSizeValue}"
+                class="slider element-slider w-full"
+                data-config-index="${configIndex}"
+                data-element-index="${elementIndex}"
+              >
+              
+              <button 
+                class="px-2 bg-gray-200 rounded increase-btn"
+                data-config-index="${configIndex}"
+                data-element-index="${elementIndex}"
+                ${element.relativeSizeValue >= 5 ? 'disabled style="opacity: 0.5"' : ''}
+              >
+                +
+              </button>
+            </div>
+            
+            <div class="preview-container mt-2 p-2 bg-gray-50 rounded ${state.showPreview ? '' : 'hidden'}">
+              <span id="preview-${element.id}" class="font-size-preview" style="font-size: ${mapLevelToPx(state.baseFontSize + element.relativeSizeValue)}px">
+                预览文本 - ${element.name} - 1234567890
+              </span>
+            </div>
+          `;
+          
+          elementsContainer.appendChild(elementRow);
+        });
+        
+        componentList.appendChild(componentCard);
+      });
+      
+      // 添加事件监听器
+      document.querySelectorAll('.element-slider').forEach(slider => {
+        slider.addEventListener('input', handleElementSliderChange);
+      });
+      
+      document.querySelectorAll('.decrease-btn').forEach(btn => {
+        btn.addEventListener('click', handleDecreaseClick);
+      });
+      
+      document.querySelectorAll('.increase-btn').forEach(btn => {
+        btn.addEventListener('click', handleIncreaseClick);
+      });
+      
+      document.querySelectorAll('.view-code-btn').forEach(btn => {
+        btn.addEventListener('click', handleViewCodeClick);
+      });
+    }
+    
+    // 处理元素滑块变化
+    function handleElementSliderChange(event) {
+      const configIndex = parseInt(event.target.dataset.configIndex);
+      const elementIndex = parseInt(event.target.dataset.elementIndex);
+      const newValue = parseInt(event.target.value);
+      
+      updateElementSize(configIndex, elementIndex, newValue);
+    }
+    
+    // 处理减小按钮点击
+    function handleDecreaseClick(event) {
+      const configIndex = parseInt(event.target.dataset.configIndex);
+      const elementIndex = parseInt(event.target.dataset.elementIndex);
+      const currentValue = state.configs[configIndex].elements[elementIndex].relativeSizeValue;
+      
+      if (currentValue > -2) {
+        updateElementSize(configIndex, elementIndex, currentValue - 1);
+      }
+    }
+    
+    // 处理增加按钮点击
+    function handleIncreaseClick(event) {
+      const configIndex = parseInt(event.target.dataset.configIndex);
+      const elementIndex = parseInt(event.target.dataset.elementIndex);
+      const currentValue = state.configs[configIndex].elements[elementIndex].relativeSizeValue;
+      
+      if (currentValue < 5) {
+        updateElementSize(configIndex, elementIndex, currentValue + 1);
+      }
+    }
+    
+    // 更新元素大小
+    function updateElementSize(configIndex, elementIndex, newValue) {
+      state.configs[configIndex].elements[elementIndex].relativeSizeValue = newValue;
+      saveConfig();
+      renderComponentList();
+      updateAllPreviews();
+    }
+    
+    // 保存配置到localStorage
+    function saveConfig() {
+      localStorage.setItem('fontSizeDebugConfig', JSON.stringify(state.configs));
+    }
+    
+    // 导出配置
+    function exportConfig() {
+      let output = '';
+      state.configs.forEach(config => {
+        output += `// ${config.componentName} - ${config.description}\n`;
+        config.elements.forEach(element => {
+          output += `// ${element.name}: fontSize ${element.relativeSizeValue >= 0 ? '+' : ''}${element.relativeSizeValue}\n`;
+          output += `// 文件路径: ${element.path}\n`;
+          output += `style={{ fontSize: \`\${mapLevelToPx(fontSize${element.relativeSizeValue >= 0 ? '+' : ''}${element.relativeSizeValue})}px\` }}\n\n`;
+        });
+        output += '\n';
+      });
+      
+      const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'font-size-config.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    
+    // 重置配置
+    function resetConfig() {
+      state.configs = JSON.parse(JSON.stringify(initialConfig));
+      localStorage.removeItem('fontSizeDebugConfig');
+      renderComponentList();
+      updateAllPreviews();
+    }
+    
+    // 切换预览
+    function togglePreview() {
+      state.showPreview = !state.showPreview;
+      document.querySelectorAll('.preview-container').forEach(container => {
+        if (state.showPreview) {
+          container.classList.remove('hidden');
+        } else {
+          container.classList.add('hidden');
+        }
+      });
+      togglePreviewBtn.textContent = state.showPreview ? '隐藏预览' : '显示预览';
+    }
+    
+    // 选择项目目录
+    async function selectProjectDirectory() {
+      try {
+        const dir = await window.electronAPI.selectProjectDirectory();
+        if (dir) {
+          state.projectDirectory = dir;
+          localStorage.setItem('projectDirectory', dir);
+          updateProjectDirDisplay();
+          showNotification(`已选择项目目录: ${dir}`);
+        }
+      } catch (error) {
+        console.error('选择项目目录失败:', error);
+        showNotification(`选择项目目录失败: ${error.message}`, 'error');
+      }
+    }
+    
+    // 应用配置到代码
+    async function applyToCode() {
+      if (!state.projectDirectory) {
+        showNotification('请先选择项目目录', 'error');
+        return;
+      }
+      
+      try {
+        // 禁用按钮，显示正在应用
+        applyToCodeBtn.disabled = true;
+        applyToCodeBtn.textContent = '正在应用配置...';
+        
+        // 调用主进程函数来修改代码
+        const result = await window.electronAPI.applyFontConfig(state.projectDirectory, state.configs);
+        
+        // 显示结果
+        if (result.success.length > 0) {
+          showNotification(`成功应用 ${result.success.length} 个样式配置到代码`);
+        }
+        
+        if (result.failure.length > 0) {
+          console.error('部分应用失败:', result.failure);
+          showNotification(`${result.failure.length} 个样式配置应用失败，请检查控制台查看详情`, 'error');
+        }
+        
+        // 恢复按钮状态
+        applyToCodeBtn.textContent = '应用配置到代码';
+        applyToCodeBtn.disabled = false;
+        
+        // 更新热更新状态
+        updateHotReloadStatus();
+      } catch (error) {
+        console.error('应用配置到代码失败:', error);
+        showNotification(`应用配置到代码失败: ${error.message}`, 'error');
+        
+        // 恢复按钮状态
+        applyToCodeBtn.textContent = '应用配置到代码';
+        applyToCodeBtn.disabled = false;
+      }
+    }
+    
+    // 添加查看代码点击处理函数
+    function handleViewCodeClick(event) {
+      const configIndex = parseInt(event.target.dataset.configIndex);
+      const elementIndex = parseInt(event.target.dataset.elementIndex);
+      const element = state.configs[configIndex].elements[elementIndex];
+      
+      console.log(`查看代码: ${element.name}, 路径: ${element.path}`);
+      
+      if (!state.projectDirectory) {
+        showNotification('请先选择项目目录', 'error');
+        return;
+      }
+      
+      // 解析文件名和行号
+      // 文件路径格式可能是 "HexagramCard.tsx:55" 或 "HexagramCard.tsx:55,60,65"
+      const pathParts = element.path.split(':');
+      const fileName = pathParts[0].trim();
+      
+      let lineNumbers = [];
+      if (pathParts.length > 1) {
+        // 可能有多个行号，用逗号分隔
+        lineNumbers = pathParts[1].split(',').map(num => parseInt(num.trim(), 10));
+      }
+      
+      // 调用主进程API打开文件
+      window.electronAPI.openFileAtLocation(state.projectDirectory, fileName, lineNumbers)
+        .then(result => {
+          if (!result.success) {
+            showNotification(`查看代码失败: ${result.error}`, 'error');
+          }
+        })
+        .catch(error => {
+          console.error('查看代码失败:', error);
+          showNotification(`查看代码失败: ${error.message}`, 'error');
+        });
+    }
+    
+    // 扫描项目中的@font-tool注释
+    async function scanFontToolComments() {
+      if (!state.projectDirectory) {
+        showNotification('请先选择项目目录', 'error');
+        return;
+      }
+      
+      try {
+        // 更新扫描状态
+        updateScanStatus(true);
+        scanCommentsBtn.disabled = true;
+        scanCommentsBtn.textContent = '正在扫描...';
+        
+        // 调用主进程函数扫描注释
+        const result = await window.electronAPI.scanFontToolComments(state.projectDirectory);
+        
+        if (result.success && result.components.length > 0) {
+          // 更新配置
+          state.configs = result.components;
+          
+          // 保存到localStorage
+          saveConfig();
+          
+          // 重新渲染组件列表
+          renderComponentList();
+          updateAllPreviews();
+          
+          showNotification(`扫描完成，找到 ${result.components.length} 个组件，共 ${result.components.reduce((acc, comp) => acc + comp.elements.length, 0)} 个元素`);
+        } else if (result.success) {
+          showNotification('未找到任何@font-tool注释，请确保项目中包含正确格式的注释', 'error');
+        } else {
+          showNotification(`扫描失败: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        console.error('扫描@font-tool注释失败:', error);
+        showNotification(`扫描失败: ${error.message}`, 'error');
+      } finally {
+        // 恢复扫描状态
+        updateScanStatus(false);
+        scanCommentsBtn.disabled = false;
+        scanCommentsBtn.textContent = '扫描@font-tool注释';
+      }
+    }
+    
+    // 初始化
+    function init() {
+      // 设置初始值
+      baseFontSizeSlider.value = state.baseFontSize;
+      updateBaseFontSizeDisplay();
+      updateProjectDirDisplay();
+      
+      // 添加事件监听器
+      baseFontSizeSlider.addEventListener('input', (e) => {
+        state.baseFontSize = parseInt(e.target.value);
+        updateBaseFontSizeDisplay();
+        updateAllPreviews();
+      });
+      
+      togglePreviewBtn.addEventListener('click', togglePreview);
+      resetBtn.addEventListener('click', resetConfig);
+      exportBtn.addEventListener('click', exportConfig);
+      selectDirBtn.addEventListener('click', selectProjectDirectory);
+      applyToCodeBtn.addEventListener('click', applyToCode);
+      scanCommentsBtn.addEventListener('click', scanFontToolComments);
+      copyClientCodeBtn.addEventListener('click', copyClientCode);
+      showClientCodeBtn.addEventListener('click', showClientCode);
+      
+      // 渲染组件列表
+      renderComponentList();
+      
+      // 定期更新热更新状态
+      updateHotReloadStatus();
+      setInterval(updateHotReloadStatus, 5000);
+    }
+    
+    // 启动应用
+    init();
+  </script>
+</body>
+</html> 

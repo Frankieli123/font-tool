@@ -1,0 +1,54 @@
+{
+  "name": "Font Tool Integration",
+  "version": "1.0.0",
+  "description": "将font-tool集成到React项目中，支持热更新字体大小设置",
+  "author": "Zhanwen",
+  "main": "index.js",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "activationEvents": [
+    "onCommand:font-tool.integrate",
+    "onCommand:font-tool.checkStatus",
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "font-tool.integrate",
+        "title": "Font Tool: 集成热更新客户端"
+      },
+      {
+        "command": "font-tool.checkStatus",
+        "title": "Font Tool: 检查连接状态"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorLangId =~ /(javascript|typescript)react/",
+          "command": "font-tool.integrate",
+          "group": "font-tool"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Font Tool",
+      "properties": {
+        "font-tool.port": {
+          "type": "number",
+          "default": 28888,
+          "description": "Font Tool WebSocket服务器端口"
+        },
+        "font-tool.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "项目打开时自动连接到Font Tool服务器"
+        }
+      }
+    }
+  }
+} 
