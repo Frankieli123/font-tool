@@ -1,103 +1,114 @@
-# Font Tool 热更新功能
+# Font-Tool
 
-Font Tool 是一个用于在React项目中管理和调试字体大小的工具。现在它支持热更新功能，可以在修改字体大小配置后立即反映在运行中的React应用上，无需手动刷新页面。
+一个用于React应用的字体大小调试工具，允许开发者实时调整和优化应用中的字体大小。
 
 ## 功能特点
 
-- 实时预览字体大小调整效果
-- 自动扫描项目中的`@font-tool`注释
-- 通过WebSocket实时将配置变更推送到React应用
-- 提供Cursor IDE插件，实现更紧密的集成
+- 🔍 扫描项目中的字体相关代码和注释
+- 🎛️ 实时滑块调整字体大小
+- 💻 直接修改源代码，无需重启应用
+- 🎯 支持精确匹配自定义字段（mapLevelToPx、getTextScaleClass等）
+- 🔄 保存上次应用的配置，智能识别变更
+- 📊 预览效果，直观感受字体变化
+
+## 安装方法
+
+1. 克隆仓库:
+
+```bash
+git clone https://github.com/yourusername/font-tool.git
+cd font-tool
+```
+
+2. 安装依赖:
+
+```bash
+npm install
+```
+
+3. 启动应用:
+
+在Windows PowerShell中:
+```powershell
+cd font-tool
+.\start.bat
+```
+
+在命令提示符或bash中:
+```bash
+cd font-tool
+start.bat  # Windows
+./start.sh  # Linux/macOS
+```
 
 ## 使用方法
 
-### 1. 启动Font Tool
+### 基本使用流程
 
-```bash
-cd font-tool
-npm install       # 安装依赖
-npm install -g .  # 全局安装
-font-tool         # 启动工具
-```
+1. 启动font-tool应用
+2. 选择React项目目录
+3. 扫描代码（自动识别字体相关函数和注释）
+4. 使用滑块调整字体大小
+5. 应用更改到代码
 
-### 2. 在React组件中添加`@font-tool`注释
+### 添加字体标记
 
-在组件中使用以下格式的注释来标记字体大小可调整的元素：
+在React组件中添加特殊注释来标记字体元素:
 
 ```jsx
-{/* @font-tool: 组件名 - 元素描述 - fontSize+1 */}
-<h1 className={getTextScaleClass(fontSize+1)} data-font-tool="+1">
-  这是一个标题
-</h1>
+{/* @font-tool：主标题 */}
+<h3 className={getTextScaleClass(fontSize)}>标题文本</h3>
 
-{/* @font-tool: 组件名 - 元素描述 - fontSize-1 */}
-<p className={getTextScaleClass(fontSize-1)} data-font-tool="-1">
-  这是一段文本
-</p>
+{/* @font-tool：正文内容 */}
+<p className={getTextScaleClass(fontSize-1)}>段落文本</p>
 ```
 
-注释格式说明：
-- `@font-tool:` - 必需，标识这是一个font-tool注释
-- `组件名` - 组件的名称，如"HexagramCard"
-- `元素描述` - 元素的描述，如"卦象名称"
-- `fontSize+X` 或 `fontSize-X` - 相对于基础字体大小的调整值
+### 支持的字体函数
 
-### 3. 集成热更新客户端
+工具默认支持以下字体调整函数:
 
-有两种方法可以集成热更新客户端：
+```jsx
+// CSS类函数
+getTextScaleClass(fontSize±N)
 
-#### 方法一：使用Cursor插件（推荐）
+// 像素计算函数
+mapLevelToPx(fontSize±N)
 
-1. 安装Cursor插件：
-   ```bash
-   cd font-tool/cursor-plugin
-   npm install
-   npm link
-   ```
-
-2. 在Cursor中激活插件，并使用命令面板中的"Font Tool: 集成热更新客户端"命令
-
-#### 方法二：手动集成
-
-1. 将`FontToolHotReload.js`复制到您的项目中
-2. 在项目的入口文件中导入：
-
-```javascript
-import { initFontToolHotReload } from './path/to/FontToolHotReload';
-
-// 初始化热更新客户端
-initFontToolHotReload();
+// 模板字符串形式
+fontSize: `${mapLevelToPx(fontSize±N)}px`
 ```
 
-### 4. 修改字体工具函数
+## 高级配置
 
-确保您的`getTextScaleClass`函数添加了`data-font-tool`属性，以便热更新时能定位到对应元素：
+### 自定义匹配字段
 
-```javascript
-function getTextScaleClass(relativeSize) {
-  const sizeValue = relativeSize >= 0 ? `+${relativeSize}` : relativeSize;
-  return `text-[${mapLevelToPx(relativeSize)}px] data-font-tool="${sizeValue}"`;
+通过UI界面可以添加自定义的字体处理函数名，例如:
+
+- `getFontSize`
+- `calculateFontSize`
+- `adjustTextSize`
+
+### 实时代码更新
+
+开启"实时代码更新"选项，在拖动滑块时自动应用更改到代码文件，无需点击"应用配置"按钮。
+
+### 组件名称标记
+
+通过添加特殊注释指定组件名称:
+
+```jsx
+{/* @font-tool组件：导航栏 */}
+const Navbar = () => {
+  // 组件代码
 }
 ```
 
-## 工作流程
+## 故障排除
 
-1. 在Font Tool中调整字体大小
-2. 点击"应用配置到代码"按钮
-3. 配置会通过WebSocket实时推送到正在运行的React应用
-4. React应用接收到更新通知，自动刷新字体大小
+- **无法启动应用**: 确保Node.js环境正确安装，并检查路径中是否有特殊字符
+- **扫描无结果**: 检查项目目录是否正确，以及是否使用了支持的字体函数或注释
+- **代码更新失败**: 检查文件权限，确保应用有权限修改项目文件
 
-## 注意事项
+## 许可证
 
-- WebSocket服务器默认在28888端口运行，可在工具中配置
-- 确保React应用在修改配置时处于运行状态
-- 建议使用Cursor插件以获得最佳体验
-
-## 命令行选项
-
-启动Font Tool时可以使用以下选项：
-
-```bash
-font-tool --port 28889  # 指定WebSocket服务器端口
-font-tool --no-auto-connect  # 禁用自动连接
-``` 
+MIT 

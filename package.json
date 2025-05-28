@@ -1,7 +1,7 @@
 {
   "name": "font-tool",
   "version": "1.0.0",
-  "description": "字体大小调试工具，带热更新功能",
+  "description": "字体大小调试工具，带实时代码更新功能",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -19,5 +19,21 @@
   },
   "bin": {
     "font-tool": "./bin/font-tool.js"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Frankieli123/font-tool.git"
+  },
+  "keywords": [
+    "font",
+    "typography",
+    "react",
+    "debugging",
+    "electron",
+    "developer-tools"
+  ],
+  "bugs": {
+    "url": "https://github.com/Frankieli123/font-tool/issues"
+  },
+  "homepage": "https://github.com/Frankieli123/font-tool#readme"
 } 
