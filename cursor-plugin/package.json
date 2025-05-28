@@ -28,6 +28,10 @@
       {
         "command": "font-tool.checkStatus",
         "title": "Font Tool: 检查连接状态"
+      },
+      {
+        "command": "font-tool.toggleDebug",
+        "title": "Font Tool: 切换调试模式"
       }
     ],
     "menus": {
@@ -51,6 +55,11 @@
           "type": "boolean",
           "default": true,
           "description": "项目打开时自动连接到Font Tool服务器"
+        },
+        "font-tool.debugMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "开启调试模式，会在控制台输出更详细的日志"
         }
       }
     }
